@@ -10,14 +10,16 @@ const (
 )
 
 const (
-	attrReverse = 1 << iota
-	attrUnderline
-	attrBold
-	attrGfx
-	attrItalic
-	attrBlink
-	attrWrap
+	AttrReverse = 1 << iota
+	AttrUnderline
+	AttrBold
+	AttrGfx
+	AttrItalic
+	AttrBlink
+	AttrWrap
 )
+
+type Attr = int16
 
 const (
 	cursorDefault = 1 << iota
@@ -63,7 +65,7 @@ const (
 
 type glyph struct {
 	c      rune
-	mode   int16
+	mode   Attr
 	fg, bg Color
 }
 
@@ -133,8 +135,8 @@ func (t *State) Unlock() {
 
 // Cell returns the character code, foreground color, and background
 // color at position (x, y) relative to the top left of the terminal.
-func (t *State) Cell(x, y int) (ch rune, fg Color, bg Color) {
-	return t.lines[y][x].c, Color(t.lines[y][x].fg), Color(t.lines[y][x].bg)
+func (t *State) Cell(x, y int) (ch rune, fg Color, bg Color, a Attr) {
+	return t.lines[y][x].c, t.lines[y][x].fg, t.lines[y][x].bg, t.lines[y][x].mode
 }
 
 // Cursor returns the current position of the cursor.
@@ -239,7 +241,7 @@ var gfxCharTable = [62]rune{
 }
 
 func (t *State) setChar(c rune, attr *glyph, x, y int) {
-	if attr.mode&attrGfx != 0 {
+	if attr.mode&AttrGfx != 0 {
 		if c >= 0x41 && c <= 0x7e && gfxCharTable[c-0x41] != 0 {
 			c = gfxCharTable[c-0x41]
 		}
@@ -249,13 +251,9 @@ func (t *State) setChar(c rune, attr *glyph, x, y int) {
 	t.lines[y][x] = *attr
 	t.lines[y][x].c = c
 	//if t.options.BrightBold && attr.mode&attrBold != 0 && attr.fg < 8 {
-	if attr.mode&attrBold != 0 && attr.fg < 8 {
-		t.lines[y][x].fg = attr.fg + 8
-	}
-	if attr.mode&attrReverse != 0 {
-		t.lines[y][x].fg = attr.bg
-		t.lines[y][x].bg = attr.fg
-	}
+	// if attr.mode&AttrBold != 0 && attr.fg < 8 {
+		// t.lines[y][x].fg = attr.fg + 8
+	// }
 }
 
 func (t *State) defaultCursor() cursor {
@@ -592,29 +590,29 @@ func (t *State) setAttr(attr []int) {
 		a := attr[i]
 		switch a {
 		case 0:
-			t.cur.attr.mode &^= attrReverse | attrUnderline | attrBold | attrItalic | attrBlink
+			t.cur.attr.mode &^= AttrReverse | AttrUnderline | AttrBold | AttrItalic | AttrBlink
 			t.cur.attr.fg = DefaultFG
 			t.cur.attr.bg = DefaultBG
 		case 1:
-			t.cur.attr.mode |= attrBold
+			t.cur.attr.mode |= AttrBold
 		case 3:
-			t.cur.attr.mode |= attrItalic
+			t.cur.attr.mode |= AttrItalic
 		case 4:
-			t.cur.attr.mode |= attrUnderline
+			t.cur.attr.mode |= AttrUnderline
 		case 5, 6: // slow, rapid blink
-			t.cur.attr.mode |= attrBlink
+			t.cur.attr.mode |= AttrBlink
 		case 7:
-			t.cur.attr.mode |= attrReverse
+			t.cur.attr.mode |= AttrReverse
 		case 21, 22:
-			t.cur.attr.mode &^= attrBold
+			t.cur.attr.mode &^= AttrBold
 		case 23:
-			t.cur.attr.mode &^= attrItalic
+			t.cur.attr.mode &^= AttrItalic
 		case 24:
-			t.cur.attr.mode &^= attrUnderline
+			t.cur.attr.mode &^= AttrUnderline
 		case 25, 26:
-			t.cur.attr.mode &^= attrBlink
+			t.cur.attr.mode &^= AttrBlink
 		case 27:
-			t.cur.attr.mode &^= attrReverse
+			t.cur.attr.mode &^= AttrReverse
 		case 38:
 			if i+2 < len(attr) && attr[i+1] == 5 {
 				i += 2
@@ -623,6 +621,13 @@ func (t *State) setAttr(attr []int) {
 				} else {
 					t.logf("bad fgcolor %d\n", attr[i])
 				}
+			} else if i+4 < len(attr) && attr[i+1] == 2 {
+				i += 2
+				// Get our R, G, B
+				r := Color(attr[i])
+				g := Color(attr[i+1])
+				b := Color(attr[i+2])
+				t.cur.attr.fg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
 			} else {
 				t.logf("gfx attr %d unknown\n", a)
 			}
@@ -633,6 +638,13 @@ func (t *State) setAttr(attr []int) {
 				i += 2
 				if between(attr[i], 0, 255) {
 					t.cur.attr.bg = Color(attr[i])
+				} else if i+4 < len(attr) && attr[i+1] == 2 {
+					i += 2
+					// Get our R, G, B
+				r := Color(attr[i])
+				g := Color(attr[i+1])
+				b := Color(attr[i+2])
+				t.cur.attr.bg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
 				} else {
 					t.logf("bad bgcolor %d\n", attr[i])
 				}
