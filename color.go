@@ -33,7 +33,7 @@ type Color uint32
 
 // Flags to signify if the color is actually an RGB value or a default color.
 const (
-	RGBColor Color = 1 << 24
+	RGBColor     Color = 1 << 24
 	DefaultColor Color = 1 << 25
 )
 

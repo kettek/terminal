@@ -13,10 +13,13 @@ const (
 	AttrReverse = 1 << iota
 	AttrUnderline
 	AttrBold
+	AttrDim
 	AttrGfx
 	AttrItalic
 	AttrBlink
 	AttrWrap
+	AttrInvisible
+	AttrStrikethrough
 )
 
 type Attr = int16
@@ -252,7 +255,7 @@ func (t *State) setChar(c rune, attr *glyph, x, y int) {
 	t.lines[y][x].c = c
 	//if t.options.BrightBold && attr.mode&attrBold != 0 && attr.fg < 8 {
 	// if attr.mode&AttrBold != 0 && attr.fg < 8 {
-		// t.lines[y][x].fg = attr.fg + 8
+	// t.lines[y][x].fg = attr.fg + 8
 	// }
 }
 
@@ -590,11 +593,13 @@ func (t *State) setAttr(attr []int) {
 		a := attr[i]
 		switch a {
 		case 0:
-			t.cur.attr.mode &^= AttrReverse | AttrUnderline | AttrBold | AttrItalic | AttrBlink
+			t.cur.attr.mode &^= AttrReverse | AttrUnderline | AttrBold | AttrDim | AttrItalic | AttrBlink | AttrInvisible | AttrStrikethrough
 			t.cur.attr.fg = DefaultFG
 			t.cur.attr.bg = DefaultBG
 		case 1:
 			t.cur.attr.mode |= AttrBold
+		case 2:
+			t.cur.attr.mode |= AttrDim
 		case 3:
 			t.cur.attr.mode |= AttrItalic
 		case 4:
@@ -603,8 +608,12 @@ func (t *State) setAttr(attr []int) {
 			t.cur.attr.mode |= AttrBlink
 		case 7:
 			t.cur.attr.mode |= AttrReverse
+		case 8:
+			t.cur.attr.mode |= AttrInvisible
+		case 9:
+			t.cur.attr.mode |= AttrStrikethrough
 		case 21, 22:
-			t.cur.attr.mode &^= AttrBold
+			t.cur.attr.mode &^= AttrBold | AttrDim
 		case 23:
 			t.cur.attr.mode &^= AttrItalic
 		case 24:
@@ -613,6 +622,10 @@ func (t *State) setAttr(attr []int) {
 			t.cur.attr.mode &^= AttrBlink
 		case 27:
 			t.cur.attr.mode &^= AttrReverse
+		case 28:
+			t.cur.attr.mode &^= AttrInvisible
+		case 29:
+			t.cur.attr.mode &^= AttrStrikethrough
 		case 38:
 			if i+2 < len(attr) && attr[i+1] == 5 {
 				i += 2
@@ -641,10 +654,10 @@ func (t *State) setAttr(attr []int) {
 				} else if i+4 < len(attr) && attr[i+1] == 2 {
 					i += 2
 					// Get our R, G, B
-				r := Color(attr[i])
-				g := Color(attr[i+1])
-				b := Color(attr[i+2])
-				t.cur.attr.bg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
+					r := Color(attr[i])
+					g := Color(attr[i+1])
+					b := Color(attr[i+2])
+					t.cur.attr.bg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
 				} else {
 					t.logf("bad bgcolor %d\n", attr[i])
 				}
