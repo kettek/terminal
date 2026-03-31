@@ -55,6 +55,7 @@ const (
 	ModeMouseX10
 	ModeMouseMany
 	ModeMouseMask = ModeMouseButton | ModeMouseMotion | ModeMouseX10 | ModeMouseMany
+	ModeBracketedPaste
 )
 
 // ChangeFlag represents possible state changes of the terminal.
@@ -548,6 +549,8 @@ func (t *State) setMode(priv bool, set bool, args []int) {
 				} else {
 					t.restoreCursor()
 				}
+			case 2004: // bracketed paste mode
+				t.modMode(set, ModeBracketedPaste)
 			case 1001:
 				// mouse highlight mode; can hang the terminal by design when
 				// implemented
