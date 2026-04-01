@@ -254,7 +254,7 @@ func (t *State) setChar(c rune, attr *glyph, x, y int) {
 	t.dirty[y] = true
 	t.lines[y][x] = *attr
 	t.lines[y][x].c = c
-	//if t.options.BrightBold && attr.mode&attrBold != 0 && attr.fg < 8 {
+	// if t.options.BrightBold && attr.mode&attrBold != 0 && attr.fg < 8 {
 	// if attr.mode&AttrBold != 0 && attr.fg < 8 {
 	// t.lines[y][x].fg = attr.fg + 8
 	// }
@@ -640,9 +640,22 @@ func (t *State) setAttr(attr []int) {
 			} else if i+4 < len(attr) && attr[i+1] == 2 {
 				i += 2
 				// Get our R, G, B
-				r := Color(attr[i])
-				g := Color(attr[i+1])
-				b := Color(attr[i+2])
+				var r, g, b Color
+				if between(attr[i], 0, 255) {
+					r = Color(attr[i])
+				} else {
+					t.logf("bad red fgcolor %d\n", attr[i])
+				}
+				if between(attr[i+1], 0, 255) {
+					g = Color(attr[i+1])
+				} else {
+					t.logf("bad green fgcolor %d\n", attr[i+1])
+				}
+				if between(attr[i+2], 0, 255) {
+					b = Color(attr[i+2])
+				} else {
+					t.logf("bad blue fgcolor %d\n", attr[i+2])
+				}
 				t.cur.attr.fg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
 			} else {
 				t.logf("gfx attr %d unknown\n", a)
@@ -654,16 +667,29 @@ func (t *State) setAttr(attr []int) {
 				i += 2
 				if between(attr[i], 0, 255) {
 					t.cur.attr.bg = Color(attr[i])
-				} else if i+4 < len(attr) && attr[i+1] == 2 {
-					i += 2
-					// Get our R, G, B
-					r := Color(attr[i])
-					g := Color(attr[i+1])
-					b := Color(attr[i+2])
-					t.cur.attr.bg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
 				} else {
 					t.logf("bad bgcolor %d\n", attr[i])
 				}
+			} else if i+4 < len(attr) && attr[i+1] == 2 {
+				i += 2
+				// Get our R, G, B
+				var r, g, b Color
+				if between(attr[i], 0, 255) {
+					r = Color(attr[i])
+				} else {
+					t.logf("bad red bgcolor %d\n", attr[i])
+				}
+				if between(attr[i+1], 0, 255) {
+					g = Color(attr[i+1])
+				} else {
+					t.logf("bad green bgcolor %d\n", attr[i+1])
+				}
+				if between(attr[i+2], 0, 255) {
+					b = Color(attr[i+2])
+				} else {
+					t.logf("bad blue bgcolor %d\n", attr[i+2])
+				}
+				t.cur.attr.bg = (((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)) | RGBColor
 			} else {
 				t.logf("gfx attr %d unknown\n", a)
 			}
